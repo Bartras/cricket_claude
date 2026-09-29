@@ -148,7 +148,7 @@ h1{margin:8px 0 0;font-size:28px}
     <p class="sub" style="margin-bottom:8px">Comment finir la partie ?</p>
     <div class="seg" id="dblSeg"><button data-dbl="1" class="on">Par un double</button><button data-dbl="0">Peu importe</button></div>
   </div>
-  <h2 class="sect">Joueurs <span style="text-transform:none;letter-spacing:0;font-weight:500">(2 à 6)</span></h2>
+  <h2 class="sect">Joueurs <span style="text-transform:none;letter-spacing:0;font-weight:500">(1 à 6)</span></h2>
   <div id="players" style="display:flex;flex-direction:column;gap:10px"></div>
   <button id="add" class="ghost">+ Ajouter un joueur</button>
   <div class="spacer"></div>
@@ -204,7 +204,7 @@ const $ = id => document.getElementById(id);
 const STORE = 'cricket-state-v1', NAMES = 'cricket-names-v1';
 
 let names = ['Joueur 1','Joueur 2'];
-try { const n = JSON.parse(localStorage.getItem(NAMES)); if (Array.isArray(n) && n.length>=2) names = n.slice(0,MAXP); } catch(e){}
+try { const n = JSON.parse(localStorage.getItem(NAMES)); if (Array.isArray(n) && n.length>=1) names = n.slice(0,MAXP); } catch(e){}
 const RULES = {
   cricket: `<ul>
     <li>Cibles : <b>20, 19, 18, 17, 16, 15 et Bull</b>.</li>
@@ -281,7 +281,7 @@ function throwDart(t, m){
   } else if (t !== null){
     for (let i=0;i<m;i++){
       if (p.marks[t] < 3) p.marks[t]++;
-      else if (G.players.some((o,k) => k!==G.cur && !closed(o,t))) p.score += t;   // points seulement si un adversaire n'a pas fermé
+      else if (G.players.length === 1 || G.players.some((o,k) => k!==G.cur && !closed(o,t))) p.score += t;   // points seulement si un adversaire n'a pas fermé
     }
     if (allClosed(p) && G.players.every(o => p.score >= o.score)) G.winner = G.cur;
   }
@@ -419,7 +419,7 @@ function render(hitTarget){
   $('win').classList.toggle('on', G.winner !== null);
   if (G.winner !== null && !wasOn) fireworks(true); else if (G.winner === null) fireworks(false);
   if (G.winner !== null){
-    $('winner').textContent = `${G.players[G.winner].name} gagne !`;
+    $('winner').textContent = G.players.length === 1 ? `Bravo ${G.players[G.winner].name} !` : `${G.players[G.winner].name} gagne !`;
     $('stats').innerHTML = statsHtml();
   }
 }
@@ -581,7 +581,7 @@ function renderSetup(){
   $('players').innerHTML = names.map((n,i)=>`
     <div class="field"><span class="dot" style="background:${COLORS[i]}"></span>
       <input value="${esc(n)}" data-i="${i}" maxlength="14" placeholder="Joueur ${i+1}" autocomplete="off">
-      ${names.length>2?`<button class="rm" data-rm="${i}" aria-label="Retirer">✕</button>`:''}
+      ${names.length>1?`<button class="rm" data-rm="${i}" aria-label="Retirer">✕</button>`:''}
     </div>`).join('');
   $('add').style.display = names.length>=MAXP ? 'none' : '';
 }
