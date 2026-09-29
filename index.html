@@ -74,8 +74,16 @@ h1{margin:8px 0 0;font-size:28px}
 .undo{background:var(--card);border-radius:14px;padding:14px;font-size:16px;font-weight:700;color:var(--warn)}
 .undo:disabled{opacity:.3}
 
+/* Stats */
+.stats{width:100%;max-width:520px;background:var(--card);border-radius:18px;padding:10px 8px;text-align:center}
+.srow{display:grid;align-items:center;padding:7px 0;border-top:1px solid var(--card2);font-size:16px;font-weight:700}
+.srow:first-child{border-top:0}
+.srow .sl{text-align:left;color:var(--muted);font-size:13px;font-weight:600;padding-left:4px}
+.srow .sn{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.srow .best{color:var(--ok)}
+.srow .win{color:var(--warn)}
 /* Win overlay */
-.overlay{position:fixed;inset:0;background:rgba(10,14,24,.92);display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;padding:24px;text-align:center;z-index:10}
+.overlay{overflow-y:auto;position:fixed;inset:0;background:rgba(10,14,24,.92);display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;padding:24px;text-align:center;z-index:10}
 .overlay.on{display:flex}
 .overlay .trophy{font-size:80px}
 .overlay h2{font-size:34px;margin:0}
@@ -124,7 +132,7 @@ h1{margin:8px 0 0;font-size:28px}
 <div id="win" class="overlay">
   <div class="trophy">🏆</div>
   <h2 id="winner"></h2>
-  <p class="sub" id="winsub"></p>
+  <div id="stats" class="stats"></div>
   <div class="row2">
     <button id="undoWin" class="ghost">↶ Annuler</button>
     <button id="again" class="big">Rejouer</button>
@@ -150,7 +158,7 @@ let mult = 1;
 /* ---------- Logique du jeu ---------- */
 function newGame(list){
   return {
-    players: list.map(n => ({name:n, marks:Object.fromEntries(TARGETS.map(t=>[t,0])), score:0})),
+    players: list.map(n => ({name:n, marks:Object.fromEntries(TARGETS.map(t=>[t,0])), score:0, stats:{darts:0,marks:0,miss:0,dbl:0,tpl:0}})),
     cur:0, darts:3, winner:null, history:[]
   };
 }
@@ -161,8 +169,12 @@ const snapshot = () => JSON.stringify({players:G.players,cur:G.cur,darts:G.darts
 function throwDart(t, m){
   if (G.winner !== null) return;
   G.history.push(snapshot());
+  const p = G.players[G.cur];
+  const st = p.stats || (p.stats = {darts:0,marks:0,miss:0,dbl:0,tpl:0});
+  st.darts++;
+  if (t === null) st.miss++;
+  else { st.marks += m; if (m===2) st.dbl++; if (m===3) st.tpl++; }
   if (t !== null){
-    const p = G.players[G.cur];
     for (let i=0;i<m;i++){
       if (p.marks[t] < 3) p.marks[t]++;
       else if (G.players.some((o,k) => k!==G.cur && !closed(o,t))) p.score += t;   // points seulement si un adversaire n'a pas fermé
@@ -225,10 +237,32 @@ function render(hitTarget){
   $('win').classList.toggle('on', G.winner !== null);
   if (G.winner !== null){
     $('winner').textContent = `${G.players[G.winner].name} gagne !`;
-    $('winsub').textContent = G.players.map(x=>`${x.name} : ${x.score}`).join('  ·  ');
+    $('stats').innerHTML = statsHtml();
   }
 }
 const esc = s => s.replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function statsHtml(){
+  const P = G.players, n = P.length, cols = `86px repeat(${n},1fr)`;
+  const S = P.map(p=>Object.assign({darts:0,marks:0,miss:0,dbl:0,tpl:0}, p.stats));
+  const mpr = S.map(x=> x.darts ? x.marks/x.darts*3 : 0);
+  const lines = [
+    ['Score', P.map(p=>p.score), 1],
+    ['Marques / tour', mpr.map(v=>v.toFixed(2)), 1, mpr],
+    ['Fléchettes', S.map(x=>x.darts), 0],
+    ['Doubles', S.map(x=>x.dbl), 1],
+    ['Triples', S.map(x=>x.tpl), 1],
+    ['Ratés', S.map(x=>x.miss), -1],
+  ];
+  let h = `<div class="srow" style="grid-template-columns:${cols}"><div></div>` +
+    P.map((p,i)=>`<div class="sn ${i===G.winner?'win':''}">${i===G.winner?'🏆 ':''}${esc(p.name)}</div>`).join('') + '</div>';
+  lines.forEach(([name, vals, dir, raw])=>{
+    const nums = raw || vals;
+    const best = dir===0 ? null : (dir>0 ? Math.max(...nums) : Math.min(...nums));
+    h += `<div class="srow" style="grid-template-columns:${cols}"><div class="sl">${name}</div>` +
+      vals.map((v,i)=>`<div class="${best!==null && nums[i]===best && (dir<0 || best>0)?'best':''}">${v}</div>`).join('') + '</div>';
+  });
+  return h;
+}
 function setMult(m){
   mult = m;
   document.querySelectorAll('#mult button').forEach(b=>b.classList.toggle('on', +b.dataset.m===m));
