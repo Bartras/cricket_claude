@@ -89,6 +89,13 @@ h1{margin:8px 0 0;font-size:28px}
 .pad.p301 button{font-size:22px}
 .pad.p301 button[data-t="25"]{grid-column:span 2}
 .pad.p301 button.miss{grid-column:span 3}
+.sect{margin:6px 0 -6px;font-size:14px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+.seg .wide{grid-column:1/-1}
+.rules{background:var(--card);border-radius:14px;padding:12px 14px}
+.rules summary{font-weight:700;cursor:pointer}
+.rules div{margin-top:8px;font-size:14.5px;line-height:1.45;color:var(--text)}
+.rules ul{margin:6px 0 0;padding-left:18px}
+.rules li{margin:4px 0}
 /* Écran de jeu compact : tout doit tenir sans défiler */
 #game{padding:10px 12px;gap:8px}
 #game .icon-btn{padding:8px 12px;font-size:14px}
@@ -130,12 +137,18 @@ h1{margin:8px 0 0;font-size:28px}
 <!-- ÉCRAN 1 : configuration -->
 <section id="setup" class="screen on">
   <h1>🎯 Fléchettes</h1>
-  <div class="seg" id="modeSeg"><button data-mode="cricket" class="on">🎯 Cricket</button><button data-mode="301">🔢 301</button></div>
+  <h2 class="sect">Mode</h2>
+  <div class="seg" id="modeSeg">
+    <button data-mode="cricket" class="on">🎯 Cricket</button>
+    <button data-mode="301">🔢 301</button>
+    <button data-mode="race" class="wide">🏁 La course folle</button>
+  </div>
+  <details id="rules" class="rules"><summary>📖 Résumé des règles</summary><div id="rulesBody"></div></details>
   <div id="opt301" style="display:none">
     <p class="sub" style="margin-bottom:8px">Comment finir la partie ?</p>
     <div class="seg" id="dblSeg"><button data-dbl="1" class="on">Par un double</button><button data-dbl="0">Peu importe</button></div>
   </div>
-  <p class="sub">Qui joue ? (2 à 6 joueurs)</p>
+  <h2 class="sect">Joueurs <span style="text-transform:none;letter-spacing:0;font-weight:500">(2 à 6)</span></h2>
   <div id="players" style="display:flex;flex-direction:column;gap:10px"></div>
   <button id="add" class="ghost">+ Ajouter un joueur</button>
   <div class="spacer"></div>
@@ -192,13 +205,33 @@ const STORE = 'cricket-state-v1', NAMES = 'cricket-names-v1';
 
 let names = ['Joueur 1','Joueur 2'];
 try { const n = JSON.parse(localStorage.getItem(NAMES)); if (Array.isArray(n) && n.length>=2) names = n.slice(0,MAXP); } catch(e){}
+const RULES = {
+  cricket: `<ul>
+    <li>Cibles : <b>20, 19, 18, 17, 16, 15 et Bull</b>.</li>
+    <li>Une cible est <b>fermée</b> après 3 marques (simple = 1, double = 2, triple = 3).</li>
+    <li>Une fois fermée, chaque marque en plus <b>rapporte des points</b>, tant qu'un adversaire ne l'a pas fermée.</li>
+    <li>Gagne celui qui a tout fermé avec un score supérieur ou égal aux autres.</li></ul>`,
+  '301': `<ul>
+    <li>Chacun part de <b>301</b> et descend jusqu'à <b>exactement 0</b>.</li>
+    <li>Option : finir <b>par un double</b> (le Bull compte comme un double) ou fin libre.</li>
+    <li><b>Bust</b> : si tu dépasses 0 (ou finis mal), le tour est annulé et ton score revient au début du tour.</li>
+    <li>L'appli propose les fléchettes à jouer pour finir.</li></ul>`,
+  race: `<ul>
+    <li>Objectif : atteindre le <b>Bull</b> en partant de <b>1</b> : 1, 2, 3 … 20, puis Bull.</li>
+    <li>À chaque tour (3 fléchettes), touche ton chiffre pour avancer d'une case.</li>
+    <li><b>Double</b> : tu avances de 2 (un chiffre sauté). <b>Triple</b> : tu avances de 3 (deux chiffres sautés).</li>
+    <li>Seul le résultat <b>à la fin des 3 fléchettes</b> compte, l'ordre n'a pas d'importance. Exemple : tu es sur 1 et tu touches 3, puis 1, puis 2 → le 3 compte quand même et tu avances jusqu'au 4.</li>
+    <li><b>Bonus</b> : si tes 3 fléchettes ont toutes servi à avancer, tu sautes un chiffre de plus pour le tour suivant.</li>
+    <li>Le Bull ne se saute pas : il faut le toucher. Le premier qui y arrive gagne.</li></ul>`
+};
 const CFG = 'cricket-cfg-v1';
 let cfg = {mode:'cricket', dbl:true};
-try { const c = JSON.parse(localStorage.getItem(CFG)); if (c && (c.mode==='cricket'||c.mode==='301')) cfg = {mode:c.mode, dbl:c.dbl!==false}; } catch(e){}
+try { const c = JSON.parse(localStorage.getItem(CFG)); if (c && ['cricket','301','race'].includes(c.mode)) cfg = {mode:c.mode, dbl:c.dbl!==false}; } catch(e){}
 function renderCfg(){
   document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on', b.dataset.mode===cfg.mode));
   document.querySelectorAll('#dblSeg button').forEach(b=>b.classList.toggle('on', (b.dataset.dbl==='1')===cfg.dbl));
   $('opt301').style.display = cfg.mode==='301' ? '' : 'none';
+  $('rulesBody').innerHTML = RULES[cfg.mode];
 }
 function saveCfg(){ try{ localStorage.setItem(CFG, JSON.stringify(cfg)); }catch(e){} }
 let G = null;      // état de la partie
@@ -209,21 +242,21 @@ function newGame(list, mode='cricket', dbl=true){
   const is301 = mode === '301';
   return {
     mode, dbl,
-    players: list.map(n => ({name:n, marks:Object.fromEntries(TARGETS.map(t=>[t,0])), score:is301?301:0,
-      stats:{darts:0,marks:0,miss:0,dbl:0,tpl:0,bust:0}})),
-    cur:0, darts:3, winner:null, turnStart:is301?301:0, history:[]
+    players: list.map(n => ({name:n, marks:Object.fromEntries(TARGETS.map(t=>[t,0])), score:is301?301:0, pos:0,
+      stats:{darts:0,marks:0,miss:0,dbl:0,tpl:0,bust:0,bonus:0}})),
+    cur:0, darts:3, winner:null, turnStart:is301?301:0, turn:[], history:[]
   };
 }
 const closed = (p,t) => p.marks[t] >= 3;
 const allClosed = p => TARGETS.every(t => closed(p,t));
-const snapshot = () => JSON.stringify({players:G.players,cur:G.cur,darts:G.darts,winner:G.winner,turnStart:G.turnStart});
+const snapshot = () => JSON.stringify({players:G.players,cur:G.cur,darts:G.darts,winner:G.winner,turnStart:G.turnStart,turn:G.turn});
 
 function throwDart(t, m){
   if (G.winner !== null) return;
   G.history.push(snapshot());
   const p = G.players[G.cur];
   const st = p.stats || (p.stats = {});
-  for (const k of ['darts','marks','miss','dbl','tpl','bust']) st[k] = st[k] || 0;
+  for (const k of ['darts','marks','miss','dbl','tpl','bust','bonus']) st[k] = st[k] || 0;
   const n = t === null ? Math.min(m, G.darts) : 1;   // « Raté » double/triple = 2 ou 3 fléchettes ratées d'un coup
   st.darts += n;
   if (t === null) st.miss += n;
@@ -240,6 +273,10 @@ function throwDart(t, m){
         if (left === 0) G.winner = G.cur;
       }
     }
+  } else if (G.mode === 'race'){
+    G.turn = G.turn || [];
+    if (t === null) for (let i=0;i<n;i++) G.turn.push({t:null,m:1}); else G.turn.push({t,m});
+    if (raceChain(p.pos, G.turn).win){ p.pos = RACE.length-1; G.winner = G.cur; }
   } else if (t !== null){
     for (let i=0;i<m;i++){
       if (p.marks[t] < 3) p.marks[t]++;
@@ -253,10 +290,39 @@ function throwDart(t, m){
   }
   save(); render(t);
   if (bust) toast(bustMsg, 2600);
+  else if (turnMsg && G.winner === null){ toast(turnMsg, 2400); }
+  turnMsg = '';
   if (navigator.vibrate) navigator.vibrate(G.winner!==null ? [60,40,60,40,120] : bust ? [120,60,120] : 15);
+}
+/* ---------- La course folle ---------- */
+const RACE = [...Array.from({length:20},(_,i)=>i+1), 25];       // 1..20 puis Bull
+const raceLab = i => RACE[i] === 25 ? 'Bull' : String(RACE[i]);
+let turnMsg = '';
+// Calcule la progression d'un tour : l'ordre des fléchettes n'a pas d'importance.
+function raceChain(pos, darts){
+  const used = darts.map(()=>false);
+  let cur = pos, n = 0, win = false;
+  for (;;){
+    const i = darts.findIndex((d,k)=> !used[k] && d.t === RACE[cur]);
+    if (i < 0) break;
+    used[i] = true; n++;
+    if (cur === RACE.length-1){ win = true; break; }              // Bull touché
+    cur = Math.min(cur + darts[i].m, RACE.length-1);              // double/triple = cases sautées, mais le Bull ne se saute pas
+  }
+  return {cur, used:n, win};
+}
+function commitRace(){
+  const p = G.players[G.cur], turn = G.turn || [];
+  const r = raceChain(p.pos, turn);
+  let pos = r.cur, bonus = false;
+  if (r.used === 3 && turn.length === 3 && pos < RACE.length-1){ pos++; bonus = true; p.stats.bonus++; }
+  turnMsg = bonus ? `🚀 Bonus ! ${p.name} passe au ${raceLab(pos)}`
+          : pos !== p.pos ? `${p.name} passe au ${raceLab(pos)}` : `${p.name} reste sur le ${raceLab(pos)}`;
+  p.pos = pos; G.turn = [];
 }
 function nextPlayer(fromDart){
   if (!fromDart) G.history.push(snapshot());
+  if (G.mode === 'race') commitRace();
   G.cur = (G.cur+1) % G.players.length;
   G.darts = 3;
   G.turnStart = G.players[G.cur].score;
@@ -321,10 +387,10 @@ function markSvg(n){
   return `<svg class="mark ${c}" viewBox="0 0 30 30">${inner}</svg>`;
 }
 function render(hitTarget){
-  const is301 = G.mode === '301';
+  const is301 = G.mode === '301', isRace = G.mode === 'race';
   const bd = $('board');
-  if (is301) renderBoard301(bd); else renderBoardCricket(bd, hitTarget);
-  $('modeLabel').textContent = is301 ? '301 · ' + (G.dbl ? 'finir par un double' : 'fin libre') : 'Cricket';
+  if (is301) renderBoard301(bd); else if (isRace) renderBoardRace(bd); else renderBoardCricket(bd, hitTarget);
+  $('modeLabel').textContent = is301 ? '301 · ' + (G.dbl ? 'finir par un double' : 'fin libre') : isRace ? 'La course folle' : 'Cricket';
   $('who').textContent = G.players[G.cur].name;
   $('who').style.color = COLORS[G.cur];
   $('darts').innerHTML = [0,1,2].map(i=>`<i class="${i>=G.darts?'used':''}"></i>`).join('');
@@ -332,7 +398,11 @@ function render(hitTarget){
   const p = G.players[G.cur];
   const missBtn = `<button data-t="miss" class="miss">Raté${mult>1?' ×'+mult:''}</button>`;
   const pad = $('pad');
-  if (is301){
+  if (isRace){
+    pad.className = 'pad p301';
+    pad.innerHTML = Array.from({length:20},(_,i)=>i+1).map(t=>`<button data-t="${t}">${t}</button>`).join('') +
+      '<button data-t="25">Bull</button>' + missBtn;
+  } else if (is301){
     pad.className = 'pad p301';
     pad.innerHTML = Array.from({length:20},(_,i)=>20-i).map(t=>`<button data-t="${t}">${t}</button>`).join('') +
       '<button data-t="25">Bull</button>' + missBtn;
@@ -343,7 +413,7 @@ function render(hitTarget){
       return `<button data-t="${t}" class="${dead?'shut':''}">${t===25?'Bull':t}${p.marks[t]>=3&&!dead?'<small>points</small>':''}</button>`;
     }).join('') + missBtn;
   }
-  renderHint(is301, p);
+  renderHint(p);
   const wasOn = $('win').classList.contains('on');
   $('win').classList.toggle('on', G.winner !== null);
   if (G.winner !== null && !wasOn) fireworks(true); else if (G.winner === null) fireworks(false);
@@ -352,10 +422,18 @@ function render(hitTarget){
     $('stats').innerHTML = statsHtml();
   }
 }
-function renderHint(is301, p){
-  const h = $('hint');
-  h.style.display = is301 && G.winner===null ? '' : 'none';
-  if (!is301 || G.winner!==null) return;
+function renderHint(p){
+  const h = $('hint'), is301 = G.mode === '301', isRace = G.mode === 'race';
+  h.style.display = (is301 || isRace) && G.winner===null ? '' : 'none';
+  if (!(is301 || isRace) || G.winner!==null) return;
+  if (isRace){
+    const turn = G.turn || [], r = raceChain(p.pos, turn);
+    const chips = turn.map(d => d.t===null ? '✗' : (d.m===3?'T':d.m===2?'D':'') + (d.t===25?'Bull':d.t)).join(' · ');
+    h.innerHTML = turn.length
+      ? `Ce tour : ${chips}<small>Nouvel objectif : ${raceLab(r.cur)}${r.used===turn.length && turn.length===3 ? ' (+1 bonus)' : ''}</small>`
+      : `Objectif : ${raceLab(p.pos)}<small>Touche ton chiffre, double = 2 cases, triple = 3</small>`;
+    return;
+  }
   const r = checkout(p.score, G.darts, G.dbl);
   if (r) h.innerHTML = `🎯 Pour finir : ${fmtCo(r)}`;
   else {
@@ -364,6 +442,17 @@ function renderHint(is301, p){
       ? `Pas de finition avec ${G.darts} fléchette${G.darts>1?'s':''}<small>Au prochain tour : ${fmtCo(r3)}</small>`
       : `Reste ${p.score} — continue à marquer !`;
   }
+}
+function renderBoardRace(bd){
+  const n = G.players.length, cols = n<=3 ? n : (n===4 ? 2 : 3), fs = n<=2 ? 56 : n<=4 ? 44 : 34;
+  bd.className = 'board b301';
+  bd.style.gridTemplateColumns = `repeat(${cols},minmax(0,1fr))`;
+  bd.innerHTML = G.players.map((p,i)=>{
+    let co = `${p.pos+1}/${RACE.length}`;
+    if (i === G.cur && (G.turn||[]).length){ const c = raceChain(p.pos, G.turn).cur; if (c !== p.pos) co = `→ ${raceLab(c)}`; }
+    return `<div class="pc ${i===G.cur?'cur':''}"><div class="name" style="color:${i===G.cur?COLORS[i]:''}">${esc(p.name)}</div>` +
+      `<div class="big2" style="font-size:min(${fs}px,7.2dvh)">${raceLab(p.pos)}</div><div class="co">${co}</div></div>`;
+  }).join('');
 }
 function renderBoard301(bd){
   const n = G.players.length, cols = n<=3 ? n : (n===4 ? 2 : 3), fs = n<=2 ? 56 : n<=4 ? 44 : 34;
@@ -396,7 +485,17 @@ function statsHtml(){
   const P = G.players, n = P.length, cols = `86px repeat(${n},1fr)`, is301 = G.mode === '301';
   const S = P.map(p=>Object.assign({darts:0,marks:0,miss:0,dbl:0,tpl:0,bust:0}, p.stats));
   let lines;
-  if (is301){
+  if (G.mode === 'race'){
+    const pos = P.map(p=>p.pos);
+    lines = [
+      ['Objectif', pos.map((v,i)=> i===G.winner ? 'Bull ✔' : raceLab(v)), 1, pos],
+      ['Fléchettes', S.map(x=>x.darts), 0],
+      ['Doubles', S.map(x=>x.dbl), 1],
+      ['Triples', S.map(x=>x.tpl), 1],
+      ['Ratés', S.map(x=>x.miss), -1],
+      ['Bonus', S.map(x=>x.bonus), 1],
+    ];
+  } else if (is301){
     const avg = P.map((p,i)=> S[i].darts ? (301-p.score)/S[i].darts*3 : 0);
     lines = [
       ['Reste', P.map(p=>p.score), -1],
@@ -507,7 +606,7 @@ $('pad').addEventListener('click', e=>{
 });
 $('mult').addEventListener('click', e=>{ const b=e.target.closest('button'); if(b) setMult(+b.dataset.m); });
 $('undo').onclick = undo;
-$('next').onclick = ()=>{ if(G.winner===null){ nextPlayer(false); save(); render(); toast('Joueur suivant'); } };
+$('next').onclick = ()=>{ if(G.winner===null){ nextPlayer(false); save(); render(); toast(turnMsg || 'Joueur suivant', 2400); turnMsg=''; } };
 $('menu').onclick = ()=>{ if(confirm('Quitter la partie ? Elle sera sauvegardée, tu pourras la reprendre.')){ show('setup'); checkResume(); } };
 $('restart').onclick = ()=>{ if(confirm('Recommencer la partie à zéro ?')){ G=newGame(G.players.map(p=>p.name), G.mode, G.dbl); setMult(1); save(); render(); } };
 $('undoWin').onclick = undo;
@@ -517,7 +616,7 @@ $('home').onclick = ()=>{ localStorage.removeItem(STORE); $('win').classList.rem
 /* ---------- Utilitaires ---------- */
 function show(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on', s.id===id)); }
 function save(){ try{ localStorage.setItem(STORE, JSON.stringify(G)); }catch(e){} }
-function load(){ try{ G = JSON.parse(localStorage.getItem(STORE)); if (G){ G.mode = G.mode || 'cricket'; if (G.dbl === undefined) G.dbl = true; if (G.turnStart === undefined) G.turnStart = 0; } }catch(e){ G=null; } }
+function load(){ try{ G = JSON.parse(localStorage.getItem(STORE)); if (G){ G.mode = G.mode || 'cricket'; if (G.dbl === undefined) G.dbl = true; if (G.turnStart === undefined) G.turnStart = 0; if (!G.turn) G.turn = []; } }catch(e){ G=null; } }
 function checkResume(){
   let ok=false; try{ const s=JSON.parse(localStorage.getItem(STORE)); ok = s && s.winner===null; }catch(e){}
   $('resume').style.display = ok ? '' : 'none';
