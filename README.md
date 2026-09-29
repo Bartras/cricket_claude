@@ -7,7 +7,7 @@ Simple, sans compte, sans publicité, et qui marche même sans connexion.
 
 ## Fonctionnalités
 
-- **Deux modes de jeu** : Cricket et 301.
+- **Trois modes de jeu** : Cricket, 301 et La course folle.
 - **2 à 6 joueurs**, avec des noms personnalisables (mémorisés d'une partie à l'autre).
 - **Saisie fléchette par fléchette** : Simple, Double ou Triple, puis le numéro touché. Bouton « Raté » (×2 et ×3 pour rater plusieurs fléchettes d'un coup).
 - **Annuler** autant de fléchettes que nécessaire, y compris après une victoire.
@@ -31,6 +31,16 @@ Simple, sans compte, sans publicité, et qui marche même sans connexion.
 - **Bust** : si tu dépasses 0, tombes à 1 (avec double obligatoire), ou finis sans double quand il en faut un, le tour est annulé et le score revient à celui du début du tour.
 - **Aide à la finition** : l'app propose les fléchettes à jouer pour finir (ex. `T20 · T15 · D8`, T = triple, D = double), pour le joueur en cours et pour chaque joueur.
 - Stats : reste, moyenne par tour, fléchettes, doubles, triples, ratés, busts.
+
+### La course folle
+Un mode inventé pour s'amuser.
+- Il faut atteindre le **Bull** en partant de **1** : 1, 2, 3 … 20, puis Bull.
+- À chaque tour (3 fléchettes), toucher son chiffre fait avancer d'une case.
+- **Double** : on avance de 2 (un chiffre sauté). **Triple** : on avance de 3 (deux chiffres sautés).
+- Seul le résultat **à la fin des 3 fléchettes** compte, l'ordre n'a pas d'importance (sur le 1, toucher 3 puis 1 puis 2 fait avancer jusqu'au 4).
+- **Bonus** : si les 3 fléchettes ont toutes servi à avancer, on saute un chiffre de plus pour le tour suivant.
+- Le Bull ne se saute pas : il faut le toucher. Le premier qui y arrive gagne.
+- Un résumé des règles est consultable avant de lancer la partie.
 
 ## Installer sur son téléphone
 
