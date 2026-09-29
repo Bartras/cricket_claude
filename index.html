@@ -231,7 +231,8 @@ function renderCfg(){
   document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.toggle('on', b.dataset.mode===cfg.mode));
   document.querySelectorAll('#dblSeg button').forEach(b=>b.classList.toggle('on', (b.dataset.dbl==='1')===cfg.dbl));
   $('opt301').style.display = cfg.mode==='301' ? '' : 'none';
-  $('rulesBody').innerHTML = RULES[cfg.mode];
+  $('rules').style.display = cfg.mode==='race' ? '' : 'none';
+  if (cfg.mode==='race') $('rulesBody').innerHTML = RULES.race;
 }
 function saveCfg(){ try{ localStorage.setItem(CFG, JSON.stringify(cfg)); }catch(e){} }
 let G = null;      // état de la partie
