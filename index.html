@@ -82,6 +82,7 @@ h1{margin:8px 0 0;font-size:28px}
 .srow .sn{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .srow .best{color:var(--ok)}
 .srow .win{color:var(--warn)}
+#fw{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none}
 /* Win overlay */
 .overlay{overflow-y:auto;position:fixed;inset:0;background:rgba(10,14,24,.92);display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;padding:24px;text-align:center;z-index:10}
 .overlay.on{display:flex}
@@ -130,6 +131,7 @@ h1{margin:8px 0 0;font-size:28px}
 </section>
 
 <div id="win" class="overlay">
+  <canvas id="fw"></canvas>
   <div class="trophy">🏆</div>
   <h2 id="winner"></h2>
   <div id="stats" class="stats"></div>
@@ -171,8 +173,9 @@ function throwDart(t, m){
   G.history.push(snapshot());
   const p = G.players[G.cur];
   const st = p.stats || (p.stats = {darts:0,marks:0,miss:0,dbl:0,tpl:0});
-  st.darts++;
-  if (t === null) st.miss++;
+  const n = t === null ? Math.min(m, G.darts) : 1;   // « Raté » double/triple = 2 ou 3 fléchettes ratées d'un coup
+  st.darts += n;
+  if (t === null) st.miss += n;
   else { st.marks += m; if (m===2) st.dbl++; if (m===3) st.tpl++; }
   if (t !== null){
     for (let i=0;i<m;i++){
@@ -182,7 +185,7 @@ function throwDart(t, m){
     if (allClosed(p) && G.players.every(o => p.score >= o.score)) G.winner = G.cur;
   }
   if (G.winner === null){
-    G.darts--;
+    G.darts -= n;
     if (G.darts === 0) nextPlayer(true);
   }
   save(); render(t);
@@ -232,9 +235,11 @@ function render(hitTarget){
   $('pad').innerHTML = TARGETS.map(t=>{
     const dead = closed(p,t) && G.players.every(o=>closed(o,t));
     return `<button data-t="${t}" class="${dead?'shut':''}">${t===25?'Bull':t}${p.marks[t]>=3&&!dead?'<small>points</small>':''}</button>`;
-  }).join('') + '<button data-t="miss" class="miss">Raté</button>';
+  }).join('') + `<button data-t="miss" class="miss">Raté${mult>1?' ×'+mult:''}</button>`;
   // gagnant
+  const wasOn = $('win').classList.contains('on');
   $('win').classList.toggle('on', G.winner !== null);
+  if (G.winner !== null && !wasOn) fireworks(true); else if (G.winner === null) fireworks(false);
   if (G.winner !== null){
     $('winner').textContent = `${G.players[G.winner].name} gagne !`;
     $('stats').innerHTML = statsHtml();
@@ -263,8 +268,48 @@ function statsHtml(){
   });
   return h;
 }
+let fwRun = false;
+function fireworks(on){
+  if (!on){ fwRun = false; return; }
+  if (fwRun || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  fwRun = true;
+  const cv = $('fw'), ctx = cv.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = innerWidth*dpr; cv.height = innerHeight*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+  const W = innerWidth, H = innerHeight, parts = [], rockets = [];
+  let last = performance.now(), next = 0;
+  const burst = (x,y)=>{
+    const hue = Math.random()*360, n = 70;
+    for (let i=0;i<n;i++){
+      const a = Math.PI*2*i/n + Math.random()*.2, v = 1.5 + Math.random()*4;
+      parts.push({x,y,px:x,py:y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:1,hue:hue+Math.random()*40});
+    }
+  };
+  (function frame(now){
+    if (!fwRun){ ctx.clearRect(0,0,W,H); return; }
+    const dt = Math.min(now-last, 50)/16.7; last = now;
+    ctx.clearRect(0,0,W,H);
+    if (now > next){ rockets.push({x:W*(.15+Math.random()*.7),y:H,vy:-(9+Math.random()*3),top:H*(.12+Math.random()*.35)}); next = now + 350 + Math.random()*450; }
+    ctx.lineCap = 'round';
+    for (let i=rockets.length-1;i>=0;i--){
+      const r = rockets[i]; r.y += r.vy*dt;
+      ctx.strokeStyle = '#ffe9a8'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(r.x,r.y); ctx.lineTo(r.x,r.y+10); ctx.stroke();
+      if (r.y <= r.top){ burst(r.x,r.y); rockets.splice(i,1); }
+    }
+    for (let i=parts.length-1;i>=0;i--){
+      const p = parts[i]; p.px=p.x; p.py=p.y;
+      p.vy += .06*dt; p.vx *= .985; p.vy *= .985;
+      p.x += p.vx*dt; p.y += p.vy*dt; p.life -= .011*dt;
+      if (p.life <= 0){ parts.splice(i,1); continue; }
+      ctx.strokeStyle = `hsla(${p.hue},100%,60%,${p.life})`; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(p.px,p.py); ctx.lineTo(p.x,p.y); ctx.stroke();
+    }
+    requestAnimationFrame(frame);
+  })(last);
+}
 function setMult(m){
   mult = m;
+  const mb = document.querySelector('#pad .miss'); if (mb) mb.textContent = 'Raté' + (m>1 ? ' ×'+m : '');
   document.querySelectorAll('#mult button').forEach(b=>b.classList.toggle('on', +b.dataset.m===m));
 }
 function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('on'); setTimeout(()=>t.classList.remove('on'),1600); }
@@ -294,7 +339,7 @@ $('resume').onclick = ()=>{ load(); show('game'); render(); wake(); };
 $('pad').addEventListener('click', e=>{
   const b = e.target.closest('button'); if(!b) return;
   const t = b.dataset.t;
-  if (t==='miss'){ throwDart(null,1); setMult(1); return; }
+  if (t==='miss'){ throwDart(null, mult); setMult(1); return; }
   if (+t===25 && mult===3){ toast('Pas de triple au Bull'); return; }
   throwDart(+t, mult); setMult(1);
 });
