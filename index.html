@@ -17,7 +17,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
   font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
 body{padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
 button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulation}
-.screen{display:none;height:100vh;height:100dvh;overflow-y:auto;flex-direction:column;padding:16px;gap:14px;max-width:560px;margin:0 auto}
+.screen{display:none;height:calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow-y:auto;flex-direction:column;padding:16px;gap:14px;max-width:560px;margin:0 auto}
 .screen.on{display:flex}
 h1{margin:8px 0 0;font-size:28px}
 .sub{color:var(--muted);margin:0}
@@ -40,7 +40,7 @@ h1{margin:8px 0 0;font-size:28px}
 .row{display:grid;align-items:center;text-align:center}
 .row .lab{font-weight:800;font-size:18px;color:var(--muted)}
 .row.head>div{padding:6px 2px;border-radius:12px}
-.row.head .name{font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row.head .name{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .row.head .pts{font-size:30px;font-weight:800;line-height:1.1}
 .row.head .cur{background:var(--card2);box-shadow:inset 0 0 0 2px var(--accent)}
 .row.head .cur .name{color:var(--text);font-weight:700}
@@ -85,10 +85,26 @@ h1{margin:8px 0 0;font-size:28px}
 .pc .co{font-size:12px;color:var(--ok);min-height:16px;font-weight:600}
 .hint{background:var(--card);border-radius:14px;padding:10px 12px;font-size:16px;font-weight:700;text-align:center}
 .hint small{display:block;color:var(--muted);font-weight:600;font-size:12px}
-.pad.p301{grid-template-columns:repeat(5,1fr);grid-auto-rows:minmax(50px,1fr);gap:6px}
+.pad.p301{grid-template-columns:repeat(5,1fr);gap:6px}
 .pad.p301 button{font-size:22px}
 .pad.p301 button[data-t="25"]{grid-column:span 2}
 .pad.p301 button.miss{grid-column:span 3}
+/* Écran de jeu compact : tout doit tenir sans défiler */
+#game{padding:10px 12px;gap:8px}
+#game .icon-btn{padding:8px 12px;font-size:14px}
+#game .board{padding:6px}
+#game .cell{height:clamp(22px,3.9dvh,34px)}
+#game .mark{height:calc(100% - 4px);width:auto}
+#game .row .lab{font-size:clamp(14px,2.4dvh,18px)}
+#game .row.head .pts{font-size:clamp(22px,4dvh,30px)}
+#game .turn b{font-size:18px}
+#game .mult button{padding:8px 4px;font-size:16px;white-space:nowrap}
+#game .hint{height:46px;display:flex;flex-direction:column;justify-content:center;font-size:15px;padding:0 10px;line-height:1.2;overflow:hidden}
+#game .pad{flex:1 1 auto;min-height:130px;grid-auto-rows:minmax(0,1fr)}
+#game .pad button{min-height:0}
+#game .undo,#game .ghost{padding:10px;font-size:15px}
+#game .b301 .pc .co{min-height:14px}
+#game .pad.p301{min-height:200px}
 /* Stats */
 .stats{width:100%;max-width:520px;background:var(--card);border-radius:18px;padding:10px 8px;text-align:center}
 .srow{display:grid;align-items:center;padding:7px 0;border-top:1px solid var(--card2);font-size:16px;font-weight:700}
@@ -136,7 +152,7 @@ h1{margin:8px 0 0;font-size:28px}
   </div>
   <div id="board" class="board"></div>
   <div class="turn">
-    <div><span class="sub">Au tour de</span><br><b id="who"></b></div>
+    <div><span class="sub">Au tour de </span><b id="who"></b></div>
     <div class="darts" id="darts"></div>
   </div>
   <div id="hint" class="hint" style="display:none"></div>
@@ -352,16 +368,16 @@ function renderHint(is301, p){
 function renderBoard301(bd){
   const n = G.players.length, cols = n<=3 ? n : (n===4 ? 2 : 3), fs = n<=2 ? 56 : n<=4 ? 44 : 34;
   bd.className = 'board b301';
-  bd.style.gridTemplateColumns = `repeat(${cols},1fr)`;
+  bd.style.gridTemplateColumns = `repeat(${cols},minmax(0,1fr))`;
   bd.innerHTML = G.players.map((p,i)=>{
     const r = checkout(p.score, 3, G.dbl);
     return `<div class="pc ${i===G.cur?'cur':''}"><div class="name" style="color:${i===G.cur?COLORS[i]:''}">${esc(p.name)}</div>` +
-      `<div class="big2" style="font-size:${fs}px">${p.score}</div><div class="co">${r?fmtCo(r):''}</div></div>`;
+      `<div class="big2" style="font-size:min(${fs}px,7.2dvh)">${p.score}</div><div class="co">${r?fmtCo(r):''}</div></div>`;
   }).join('');
 }
 function renderBoardCricket(bd, hitTarget){
   bd.className = 'board'; bd.style.gridTemplateColumns = '';
-  const n = G.players.length, cols = `34px repeat(${n},1fr)`;
+  const n = G.players.length, cols = `30px repeat(${n},minmax(0,1fr))`;
   let h = `<div class="row head" style="grid-template-columns:${cols}"><div></div>`;
   G.players.forEach((p,i)=>{
     h += `<div class="${i===G.cur&&G.winner===null?'cur':''}"><div class="name" style="color:${i===G.cur?COLORS[i]:''}">${esc(p.name)}</div><div class="pts">${p.score}</div></div>`;
