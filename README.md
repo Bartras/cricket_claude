@@ -40,7 +40,7 @@ Un mode inventé pour s'amuser.
 - Seul le résultat **à la fin des 3 fléchettes** compte, l'ordre n'a pas d'importance (sur le 1, toucher 3 puis 1 puis 2 fait avancer jusqu'au 4).
 - **Bonus** : si les 3 fléchettes ont toutes servi à avancer, on saute un chiffre de plus pour le tour suivant.
 - Le Bull ne se saute pas : il faut le toucher. Le premier qui y arrive gagne.
-- Un résumé des règles est consultable avant de lancer la partie.
+- Un résumé des règles est consultable avant de lancer la partie (affiché quand ce mode est sélectionné).
 
 ## Installer sur son téléphone
 
