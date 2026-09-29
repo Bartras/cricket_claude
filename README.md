@@ -3,7 +3,7 @@
 Application pour compter les points d'une partie de fléchettes sur téléphone.
 Simple, sans compte, sans publicité, et qui marche même sans connexion.
 
-**Utiliser l'application : https://bartras.github.io/test_claude/**
+**Utiliser l'application : https://bartras.github.io/cricket_claude/**
 
 ## Fonctionnalités
 
