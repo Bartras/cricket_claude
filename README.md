@@ -8,7 +8,7 @@ Simple, sans compte, sans publicité, et qui marche même sans connexion.
 ## Fonctionnalités
 
 - **Trois modes de jeu** : Cricket, 301 et La course folle.
-- **2 à 6 joueurs**, avec des noms personnalisables (mémorisés d'une partie à l'autre).
+- **1 à 6 joueurs** (1 joueur = mode entraînement), avec des noms personnalisables (mémorisés d'une partie à l'autre).
 - **Saisie fléchette par fléchette** : Simple, Double ou Triple, puis le numéro touché. Bouton « Raté » (×2 et ×3 pour rater plusieurs fléchettes d'un coup).
 - **Annuler** autant de fléchettes que nécessaire, y compris après une victoire.
 - **Joueur suivant** automatique après 3 fléchettes (ou à la main).
