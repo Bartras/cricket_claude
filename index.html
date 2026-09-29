@@ -17,7 +17,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
   font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
 body{padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
 button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulation}
-.screen{display:none;height:100%;flex-direction:column;padding:16px;gap:14px;max-width:560px;margin:0 auto}
+.screen{display:none;height:100vh;height:100dvh;overflow-y:auto;flex-direction:column;padding:16px;gap:14px;max-width:560px;margin:0 auto}
 .screen.on{display:flex}
 h1{margin:8px 0 0;font-size:28px}
 .sub{color:var(--muted);margin:0}
@@ -64,12 +64,13 @@ h1{margin:8px 0 0;font-size:28px}
 .mult button{background:var(--card);border-radius:14px;padding:12px;font-size:17px;font-weight:700}
 .mult button.on{background:var(--accent)}
 .mult button:disabled{opacity:.3}
-.pad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;flex:1;min-height:0}
-.pad button{background:var(--card2);border-radius:16px;font-size:28px;font-weight:800;min-height:64px;transition:transform .05s}
+.pad{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:minmax(64px,1fr);gap:8px;flex:1 0 auto}
+.pad button{background:var(--card2);border-radius:16px;font-size:28px;font-weight:800;transition:transform .05s}
 .pad button:active{transform:scale(.95);background:var(--accent)}
 .pad button.shut{opacity:.4}
 .pad button.miss{font-size:18px;background:var(--card);color:var(--muted)}
 .pad button small{display:block;font-size:11px;font-weight:600;color:var(--muted)}
+.turn,.mult,.top,.board{flex:none}
 .undo{background:var(--card);border-radius:14px;padding:14px;font-size:16px;font-weight:700;color:var(--warn)}
 .undo:disabled{opacity:.3}
 
@@ -89,7 +90,7 @@ h1{margin:8px 0 0;font-size:28px}
 <!-- ÉCRAN 1 : configuration -->
 <section id="setup" class="screen on">
   <h1>🎯 Cricket</h1>
-  <p class="sub">Qui joue ? (2 à 4 joueurs)</p>
+  <p class="sub">Qui joue ? (2 à 6 joueurs)</p>
   <div id="players" style="display:flex;flex-direction:column;gap:10px"></div>
   <button id="add" class="ghost">+ Ajouter un joueur</button>
   <div class="spacer"></div>
@@ -136,12 +137,13 @@ h1{margin:8px 0 0;font-size:28px}
 'use strict';
 const TARGETS = [20,19,18,17,16,15,25];           // 25 = Bull
 const label = t => t === 25 ? 'B' : String(t);
-const COLORS = ['#4f8cff','#ef4f5f','#2fbf71','#ffb020'];
+const COLORS = ['#4f8cff','#ef4f5f','#2fbf71','#ffb020','#b968ff','#25c7d9'];
+const MAXP = 6;
 const $ = id => document.getElementById(id);
 const STORE = 'cricket-state-v1', NAMES = 'cricket-names-v1';
 
 let names = ['Joueur 1','Joueur 2'];
-try { const n = JSON.parse(localStorage.getItem(NAMES)); if (Array.isArray(n) && n.length>=2) names = n.slice(0,4); } catch(e){}
+try { const n = JSON.parse(localStorage.getItem(NAMES)); if (Array.isArray(n) && n.length>=2) names = n.slice(0,MAXP); } catch(e){}
 let G = null;      // état de la partie
 let mult = 1;
 
@@ -240,11 +242,12 @@ function renderSetup(){
       <input value="${esc(n)}" data-i="${i}" maxlength="14" placeholder="Joueur ${i+1}" autocomplete="off">
       ${names.length>2?`<button class="rm" data-rm="${i}" aria-label="Retirer">✕</button>`:''}
     </div>`).join('');
-  $('add').style.display = names.length>=4 ? 'none' : '';
+  $('add').style.display = names.length>=MAXP ? 'none' : '';
 }
 $('players').addEventListener('input', e=>{ if(e.target.dataset.i!==undefined) names[+e.target.dataset.i]=e.target.value; });
+$('players').addEventListener('focusin', e=>{ const i=e.target; if(i.tagName==='INPUT') setTimeout(()=>i.select(),0); });
 $('players').addEventListener('click', e=>{ const r=e.target.dataset.rm; if(r!==undefined){ names.splice(+r,1); renderSetup(); } });
-$('add').onclick = ()=>{ if(names.length<4){ names.push('Joueur '+(names.length+1)); renderSetup(); } };
+$('add').onclick = ()=>{ if(names.length<MAXP){ names.push('Joueur '+(names.length+1)); renderSetup(); } };
 $('start').onclick = ()=>{
   const list = names.map((n,i)=>n.trim()||('Joueur '+(i+1)));
   names = list;
